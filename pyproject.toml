@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datalogger"
+description = "Python port of Datalyse, the serial-port data logger from datalyse.dk"
+readme = "README.md"
+requires-python = ">=3.10"
+# The repository's LICENSE file is the GNU Affero General Public License v3 or
+# later.  Note that Datalyse itself is *not* AGPL: it is third-party freeware,
+# (c) Carl Hemmingsen, and is deliberately not part of this distribution.
+license = { file = "LICENSE" }
+authors = [{ name = "Datalyse port contributors" }]
+keywords = ["datalogger", "serial", "rs232", "instrumentation", "datalyse", "labview-alternative"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dynamic = ["version"]
+
+# The configuration and data-file layers are standard library only; everything
+# below is needed only for the corresponding feature.
+dependencies = []
+
+[project.optional-dependencies]
+serial = ["pyserial>=3.5"]
+analysis = ["numpy>=1.24", "matplotlib>=3.7"]
+all = ["pyserial>=3.5", "numpy>=1.24", "matplotlib>=3.7"]
+dev = ["pyserial>=3.5", "numpy>=1.24", "matplotlib>=3.7", "pytest>=7.4"]
+# only the reverse-engineering scripts in scripts/ need these
+reverse = ["pefile>=2023.2.7", "capstone>=5.0"]
+
+[project.scripts]
+datalogger = "datalogger.cli:main"
+
+[project.urls]
+Homepage = "https://datalyse.dk/datauk/index.htm"
+
+[tool.setuptools.dynamic]
+version = { attr = "datalogger.__version__" }
+
+[tool.setuptools.packages.find]
+# the decompiled artifacts, the vendor help mirror and the scripts are not
+# part of the distributable package
+include = ["datalogger*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

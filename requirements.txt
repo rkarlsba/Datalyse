@@ -1,0 +1,18 @@
+# Runtime dependencies for the Datalyse Python port.
+#
+# Split by what actually needs them:
+#   * the configuration and data-file layers are standard library only
+#   * pyserial is only required to talk to real hardware
+#   * numpy/matplotlib are only required by the analysis and plotting paths
+#   * pytest is only required to run the test suite
+
+pyserial>=3.5
+numpy>=1.24
+matplotlib>=3.7
+
+# development
+pytest>=7.4
+
+# used only by the reverse-engineering scripts in scripts/
+pefile>=2023.2.7
+capstone>=5.0

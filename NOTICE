@@ -1,0 +1,60 @@
+Datalyse — Python port
+Copyright (C) 2026 Datalyse port contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.  See the LICENSE file for the full text.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+--------------------------------------------------------------------------------
+THE ORIGINAL PROGRAM
+
+The original Datalyse is a separate work.  It is 32-bit Windows freeware for
+laboratory data acquisition, written in Borland Delphi 3 by Carl Hemmingsen and
+published at https://datalyse.dk/ .  Its own readme states simply:
+
+    Licence:
+    Datalyse is freeware
+
+The last build is dated 2012-07-15, and the program is no longer maintained.
+
+Datalyse is NOT covered by the AGPL and is NOT distributed with this repository.
+That is deliberate: "freeware" is not a free-software licence, so the original
+binary, its shipped configuration and sample files, the decompiled output derived
+from it, and the vendor help pages mirrored from datalyse.dk are all excluded
+(see .gitignore).  None of Carl Hemmingsen's code is included here.
+
+Because Datalyse's authorship notices are embedded in the data files it writes,
+this port reproduces them literally when saving: a file produced by the original
+is byte-identical to one produced by this port, including the author field.  That
+is a claim about file-format fidelity, not a claim of authorship.
+
+--------------------------------------------------------------------------------
+PROVENANCE OF THE TECHNICAL FINDINGS
+
+Everything this port knows about the original was obtained by inspection:
+
+  * the instrument protocol exchanges were recovered from the string table of
+    the driver dispatcher at 0x0047FB84 in Datalyse.exe;
+  * the serial line settings and several measurement exchanges are transcribed
+    from the instrument documentation published at datalyse.dk, quoted where
+    used;
+  * the .DAT/.TXT file format was derived from the twelve sample files shipped
+    in datalyse.zip, whose round-trip is reproduced byte-for-byte by the tests.
+
+Reproducing that inspection is scripted in scripts/reverse.sh, which downloads
+and regenerates all excluded material on demand.  Anyone running it fetches
+Datalyse from its original publisher; it is not redistributed here.
+
+--------------------------------------------------------------------------------
+ACCURACY
+
+Where a protocol could not be recovered, this port does not guess.  Drivers are
+labelled by provenance ('doc' = transcribed from vendor documentation,
+'binary' = identification recovered from the binary, 'inferred') and a test
+enforces that no driver claims a measurement command it cannot source.  See
+docs/DEVICES.md for the per-device accounting.
