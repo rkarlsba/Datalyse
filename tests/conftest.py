@@ -2,16 +2,15 @@
 Shared test configuration.
 
 The tests that assert against Datalyse's own shipped files (the twelve sample
-``.DAT``/``.TXT`` files and ``DATALYSE.INI``) need ``original/`` to be present.
-That directory is deliberately **not** committed -- it holds the original
-proprietary binary and its data, which are not ours to redistribute -- so when
-it is missing those tests skip with an explanation instead of failing.
+``.DAT``/``.TXT`` files and ``DATALYSE.INI``) read them from ``original/``.
+Those files are committed: they are third-party material under Carl
+Hemmingsen's terms rather than the AGPL -- see ``original/COPYRIGHT.md`` -- and
+being present is what makes the byte-exact format tests run at all.
 
-Get it back at any time with::
+If the directory has been removed, those tests skip with an explanation instead
+of failing.  Restore it with::
 
     scripts/reverse.sh
-
-which re-downloads and regenerates ``original/`` along with everything else.
 """
 import glob
 import os
@@ -29,8 +28,8 @@ HAVE_SAMPLES = len(SAMPLES) >= 10
 HAVE_INI = os.path.isfile(os.path.join(ORIGINAL, "DATALYSE.INI"))
 
 MISSING_MSG = (
-    "the original Datalyse files are not in original/ -- they are intentionally "
-    "not committed; run scripts/reverse.sh to download and regenerate them"
+    "Datalyse's own files are missing from original/ -- they are committed, so "
+    "this means the directory was removed; run scripts/reverse.sh to restore it"
 )
 
 

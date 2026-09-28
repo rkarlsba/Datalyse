@@ -11,12 +11,14 @@ SAMPLES = sorted(glob.glob(os.path.join(ROOT, "original", "*.DAT"))) + \
           sorted(glob.glob(os.path.join(ROOT, "original", "*.TXT")))
 SAMPLES = [p for p in SAMPLES if "README" not in p]
 
-# The sample files are Datalyse's own data and are not committed; see
-# tests/conftest.py.  Without them there is nothing to round-trip.
+# Datalyse's own sample files live in original/ and are committed: they are
+# third-party material rather than AGPL, and they are the ground truth for the
+# format.  See original/COPYRIGHT.md.  If the directory has been removed there
+# is nothing to round-trip, so skip rather than fail.
 pytestmark = pytest.mark.skipif(
     len(SAMPLES) < 10,
-    reason="the twelve sample .DAT/.TXT files are not committed -- "
-           "run scripts/reverse.sh to download them",
+    reason="Datalyse's sample .DAT/.TXT files are missing from original/ -- "
+           "run scripts/reverse.sh to restore them",
 )
 
 

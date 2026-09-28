@@ -21,13 +21,14 @@ import os
 from dataclasses import dataclass, field
 
 #: Shown wherever Datalyse's own configuration is required but absent.  The file
-#: belongs to the original program and is not distributed with this port
-#: (Datalyse is freeware, not AGPL), so say how to obtain it rather than leaving
-#: the user with a bare "not found".
+#: ships in the repository's ``original/`` directory, so this really means the
+#: directory has gone missing -- say how to get it back.
 MISSING_INI_HELP = (
-    "Datalyse's own configuration is not distributed with this port -- it "
-    "belongs to\nthe original program, which is freeware rather than AGPL.  "
-    "Fetch it with\n\n    scripts/reverse.sh\n\n"
+    "Datalyse's own configuration was not found.  It ships in this repository's\n"
+    "original/ directory, which is third-party material rather than AGPL -- see\n"
+    "original/COPYRIGHT.md.\n\n"
+    "If that directory is missing, restore it with\n\n"
+    "    scripts/reverse.sh\n\n"
     "or point at a copy you already have: --ini /path/to/Datalyse.ini"
 )
 

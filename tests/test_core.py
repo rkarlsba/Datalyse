@@ -20,8 +20,8 @@ INI = os.path.join(ROOT, "original", "DATALYSE.INI")
 @pytest.fixture(scope="module")
 def cfg():
     if not os.path.isfile(INI):
-        pytest.skip("original/DATALYSE.INI is not committed -- "
-                    "run scripts/reverse.sh to download it")
+        pytest.skip("Datalyse's DATALYSE.INI is missing from original/ -- "
+                    "run scripts/reverse.sh to restore it")
     return DatalyseConfig.load(INI)
 
 

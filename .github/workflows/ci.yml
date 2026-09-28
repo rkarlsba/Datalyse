@@ -41,9 +41,10 @@ jobs:
           python -c "import tkinter; print('Tk', tkinter.TkVersion)"
           python -c "import datalogger.platform_support as p; print(p.platform_notes())"
 
-      # The twelve sample files and Datalyse.ini are deliberately not committed,
-      # so the tests that need them skip with a stated reason. Everything else,
-      # including the whole platform layer, runs everywhere.
+      # Datalyse's own files are committed under original/, so the byte-exact
+      # format tests run here too rather than skipping. They are third-party
+      # material, not AGPL -- see original/COPYRIGHT.md. If that directory is
+      # ever removed, the tests that need it skip with a stated reason.
       - name: Tests
         env:
           MPLBACKEND: Agg

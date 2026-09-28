@@ -9,7 +9,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 # The repository's LICENSE file is the GNU Affero General Public License v3 or
 # later.  Note that Datalyse itself is *not* AGPL: it is third-party freeware,
-# (c) Carl Hemmingsen, and is deliberately not part of this distribution.
+# (c) Carl Hemmingsen, carried in original/ as an aggregate under AGPL section 5.
+# See original/COPYRIGHT.md.
 license = { file = "LICENSE" }
 authors = [{ name = "Datalyse port contributors" }]
 keywords = ["datalogger", "serial", "rs232", "instrumentation", "datalyse", "labview-alternative"]
