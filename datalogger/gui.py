@@ -29,6 +29,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__, analysis
+from . import platform_support as plat
 from .config import MISSING_INI_HELP, DatalyseConfig, find_file
 from .datafile import DataFile
 from .drivers import registry
@@ -76,13 +77,20 @@ class DatalyseApp(tk.Tk):
         m = tk.Menu(self)
 
         f = tk.Menu(m, tearoff=0)
-        f.add_command(label="Open ...", accelerator="Ctrl+O", command=self.open_file)
-        f.add_command(label="Save data", command=self.save_data)
+        f.add_command(label="Open ...", accelerator=plat.accelerator("O"),
+                      command=self.open_file)
+        f.add_command(label="Save data", accelerator=plat.accelerator("S"),
+                      command=self.save_data)
         f.add_command(label="Save data as ...", command=self.save_data_as)
         f.add_separator()
         f.add_command(label="Export table as CSV ...", command=self.export_csv)
         f.add_separator()
-        f.add_command(label="E&xit Datalyse", command=self.destroy)
+        if plat.IS_MACOS:
+            # macOS expects Quit in the application menu (Cmd+Q), not in File.
+            f.add_command(label="Quit Datalyse", accelerator=plat.accelerator("Q"),
+                          command=self.destroy)
+        else:
+            f.add_command(label="E&xit Datalyse", command=self.destroy)
         m.add_cascade(label="File", menu=f)
 
         e = tk.Menu(m, tearoff=0)
@@ -138,8 +146,16 @@ class DatalyseApp(tk.Tk):
                       command=lambda: self.status("http://www.datalyse.dk"))
         m.add_cascade(label="Help", menu=h)
 
+        # Kept as an attribute because root["menu"] only yields the widget's
+        # name, which is not enough to walk the entries.
+        self.menubar = m
         self.config(menu=m)
-        self.bind("<Control-o>", lambda _e: self.open_file())
+        # Command+O on macOS, Control+O elsewhere -- a <Control-...> binding
+        # never fires on macOS.
+        plat.bind_mod(self, "o", self.open_file)
+        plat.bind_mod(self, "s", self.save_data)
+        plat.install_macos_app_menu(self, on_about=self.about,
+                                    on_quit=self.destroy)
 
     # ------------------------------------------------------------------- body
     def _build_body(self) -> None:
@@ -236,17 +252,37 @@ class DatalyseApp(tk.Tk):
         win.title("Measure (t,f(t))")
         win.transient(self)
         rows = [
-            ("Serial port", tk.StringVar(value="/dev/ttyUSB0")),
+            ("Serial port", tk.StringVar(value=plat.default_serial_port())),
             ("Interval (s)", tk.StringVar(value="1.0")),
             ("Duration (s, blank = until Stop)", tk.StringVar(value="")),
             ("Comment", tk.StringVar(value="")),
         ]
+        available = plat.preferred_ports()
         for i, (label, var) in enumerate(rows):
             ttk.Label(win, text=label).grid(row=i, column=0, sticky="w", padx=6, pady=3)
-            ttk.Entry(win, textvariable=var, width=34).grid(row=i, column=1, padx=6, pady=3)
+            if i == 0:
+                # Port names differ per platform and per adapter, so offer what
+                # is actually attached rather than a hardcoded Linux path.
+                ttk.Combobox(win, textvariable=var, width=32,
+                             values=available).grid(row=i, column=1, padx=6, pady=3)
+            else:
+                ttk.Entry(win, textvariable=var, width=34).grid(
+                    row=i, column=1, padx=6, pady=3)
+
+        # Rows are numbered as we go so the hints and the button cannot collide.
+        next_row = len(rows)
+        if available:
+            ttk.Label(win, text=f"{len(available)} port(s) detected").grid(
+                row=next_row, column=0, columnspan=2, sticky="w", padx=6)
+        else:
+            ttk.Label(win, text="no serial ports detected -- type the device "
+                                "name, e.g. /dev/cu.usbserial-1420").grid(
+                row=next_row, column=0, columnspan=2, sticky="w", padx=6)
+        next_row += 1
         if defaults:
             ttk.Label(win, text=f"line settings: {defaults.describe()}").grid(
-                row=len(rows), column=0, columnspan=2, sticky="w", padx=6)
+                row=next_row, column=0, columnspan=2, sticky="w", padx=6)
+            next_row += 1
 
         def go():
             port = rows[0][1].get().strip()
@@ -262,7 +298,7 @@ class DatalyseApp(tk.Tk):
             self._run_measure(port, interval, duration, comment)
 
         ttk.Button(win, text="Start", command=go).grid(
-            row=len(rows) + 1, column=1, sticky="e", padx=6, pady=8)
+            row=next_row, column=1, sticky="e", padx=6, pady=8)
 
     def _run_measure(self, port: str, interval: float, duration, comment: str) -> None:
         binding = resolve(device_number=self.device_number)
@@ -370,9 +406,8 @@ class DatalyseApp(tk.Tk):
 
     # -------------------------------------------------------------------- file
     def open_file(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Open", filetypes=[("Datalyse data", "*.DAT *.dat *.TXT *.txt"),
-                                     ("All files", "*.*")])
+        path = filedialog.askopenfilename(title="Open",
+                                          filetypes=plat.data_filetypes())
         if not path:
             return
         try:
@@ -396,13 +431,13 @@ class DatalyseApp(tk.Tk):
 
     def save_data_as(self) -> None:
         path = filedialog.asksaveasfilename(defaultextension=".DAT",
-                                            filetypes=[("Datalyse data", "*.DAT")])
+                                            filetypes=plat.data_filetypes())
         if path:
             self._write(path)
 
     def export_csv(self) -> None:
         path = filedialog.asksaveasfilename(defaultextension=".csv",
-                                            filetypes=[("CSV", "*.csv")])
+                                            filetypes=plat.csv_filetypes())
         if not path:
             return
         with open(path, "w", encoding="utf-8") as fh:
@@ -545,20 +580,24 @@ class DatalyseApp(tk.Tk):
             row=1, column=1, sticky="e", padx=6, pady=6)
 
     def show_terminal_help(self) -> None:
+        port = plat.default_serial_port()
         self._result("Terminal",
                      "Use the CLI for the raw terminal:\n\n"
-                     "    datalogger monitor /dev/ttyUSB0 --baud 9600")
+                     f"    datalogger monitor {port} --baud 9600")
 
     def about(self) -> None:
         self._result("About Datalyse",
                      f"Datalyse (Python port) {__version__}\n\n"
                      "Original: Datalyse 3.7, (c) Carl Hemmingsen, freeware,\n"
                      "Borland Delphi 3, last built 2012-07-15.\n"
-                     "Protocols recovered from Datalyse.exe and datalyse.dk.")
+                     "Protocols recovered from Datalyse.exe and datalyse.dk.\n\n"
+                     f"This port: AGPL-3.0-or-later.\n{plat.platform_notes()}")
 
 
 def main(ini_path: str | None = None) -> int:
     app = DatalyseApp(ini_path)
+    # A Tk window started from a terminal on macOS opens behind the terminal.
+    plat.raise_window(app)
     app.mainloop()
     return 0
 
