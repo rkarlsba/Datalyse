@@ -24,7 +24,7 @@ from . import __version__
 from .analysis import (MODELS, extrema, fit_model, half_life, integrate,
                        linear_regression, load_acids, parse_acid_line,
                        poisson_expected, titration_curve)
-from .config import COMPANIES, DatalyseConfig
+from .config import COMPANIES, MISSING_INI_HELP, DatalyseConfig
 from .datafile import DataFile
 from .drivers import registry
 from .drivers.base import find_for
@@ -62,6 +62,8 @@ def cmd_devices(args) -> int:
     cfg = _load_config(args)
     if cfg is None:
         print("datalyse.ini not found", file=sys.stderr)
+        print(file=sys.stderr)
+        print(MISSING_INI_HELP, file=sys.stderr)
         return 2
     print(cfg.describe())
     print()

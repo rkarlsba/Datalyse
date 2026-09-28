@@ -29,7 +29,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__, analysis
-from .config import DatalyseConfig, find_file
+from .config import MISSING_INI_HELP, DatalyseConfig, find_file
 from .datafile import DataFile
 from .drivers import registry
 from .drivers.devices import DEVICE_PROFILES
@@ -68,7 +68,8 @@ class DatalyseApp(tk.Tk):
             self.status(f"Datalyse.ini: {self.cfg.source}  "
                         f"({len(self.cfg.enabled_devices())} devices ON)")
         else:
-            self.status("datalyse.ini not found -- device list unavailable")
+            self.status("datalyse.ini not found -- run scripts/reverse.sh "
+                        "to fetch the device list")
 
     # ------------------------------------------------------------------ menus
     def _build_menu(self) -> None:
@@ -191,7 +192,8 @@ class DatalyseApp(tk.Tk):
     # ------------------------------------------------------------------ device
     def choose_device(self) -> None:
         if not self.cfg:
-            messagebox.showwarning(APP_TITLE, "datalyse.ini not found")
+            messagebox.showwarning(APP_TITLE,
+                                   "datalyse.ini not found\n\n" + MISSING_INI_HELP)
             return
         win = tk.Toplevel(self)
         win.title("Choose Device")

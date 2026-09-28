@@ -20,6 +20,17 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+#: Shown wherever Datalyse's own configuration is required but absent.  The file
+#: belongs to the original program and is not distributed with this port
+#: (Datalyse is freeware, not AGPL), so say how to obtain it rather than leaving
+#: the user with a bare "not found".
+MISSING_INI_HELP = (
+    "Datalyse's own configuration is not distributed with this port -- it "
+    "belongs to\nthe original program, which is freeware rather than AGPL.  "
+    "Fetch it with\n\n    scripts/reverse.sh\n\n"
+    "or point at a copy you already have: --ini /path/to/Datalyse.ini"
+)
+
 # Manufacturer codes, from the comment on the COMPANYNUMBER line.
 COMPANIES = {
     1: "all",
