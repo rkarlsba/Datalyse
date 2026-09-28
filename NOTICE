@@ -22,11 +22,16 @@ published at https://datalyse.dk/ .  Its own readme states simply:
 
 The last build is dated 2012-07-15, and the program is no longer maintained.
 
-Datalyse is NOT covered by the AGPL and is NOT distributed with this repository.
-That is deliberate: "freeware" is not a free-software licence, so the original
-binary, its shipped configuration and sample files, the decompiled output derived
-from it, and the vendor help pages mirrored from datalyse.dk are all excluded
-(see .gitignore).  None of Carl Hemmingsen's code is included here.
+Datalyse is NOT covered by the AGPL.  The author's own files are carried in
+`original/` as third-party material under his terms; see `original/COPYRIGHT.md`
+for the full position, the provenance of every file, and the pending request to
+relicense.  AGPL §5 permits a covered work to sit in an aggregate alongside
+separate independent works, so being in this repository does not put those files
+under the AGPL, and nothing here relicenses them.
+
+Still excluded, because they are derived from the original rather than being the
+original, and because `scripts/reverse.sh` regenerates them: the decompiled
+output, and the vendor help pages mirrored from datalyse.dk.
 
 Because Datalyse's authorship notices are embedded in the data files it writes,
 this port reproduces them literally when saving: a file produced by the original
@@ -47,8 +52,8 @@ Everything this port knows about the original was obtained by inspection:
     in datalyse.zip, whose round-trip is reproduced byte-for-byte by the tests.
 
 Reproducing that inspection is scripted in scripts/reverse.sh, which downloads
-and regenerates all excluded material on demand.  Anyone running it fetches
-Datalyse from its original publisher; it is not redistributed here.
+and regenerates the material that is not committed.  The files it fetches are
+the publisher's own download, also carried here in `original/`.
 
 --------------------------------------------------------------------------------
 ACCURACY

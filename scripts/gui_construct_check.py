@@ -5,7 +5,7 @@ Construct the Tk GUI and report what came up, then tear it down.
 This is the cross-platform regression check: it is what fails if a binding,
 a ttk widget or a menu call is not available on the Tk that ships with the
 running platform.  Unlike ``gui_smoketest.py`` it needs no data files, so it
-works in CI where Datalyse's own sample files are not committed.
+works whether or not Datalyse's own data files are present.
 
 Runs on a real display, or under ``xvfb-run`` on a headless Linux box.  Exit
 status is non-zero if the window cannot be built.

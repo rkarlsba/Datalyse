@@ -202,11 +202,18 @@ Borland Delphi 3 by **Carl Hemmingsen**, published at
 maintained. Its own readme states only *"Datalyse is freeware"* — which is not a
 free-software licence, and it is **not** covered by the AGPL above.
 
-So Datalyse itself is **not distributed here**: the original binary, its shipped
-configuration and sample files, the decompiled output derived from it, and the
-mirrored vendor help pages are all excluded via `.gitignore`. None of Carl
-Hemmingsen's code is included. `scripts/reverse.sh` downloads and regenerates all
-of it from the original publisher on demand.
+Datalyse itself is **not covered by the AGPL**. Its own files — the program, its
+configuration and the sample data — are committed under
+[`original/`](original/COPYRIGHT.md) as third-party material under the author's
+terms. See [original/COPYRIGHT.md](original/COPYRIGHT.md) for the provenance of
+every file and the pending request to relicense. AGPL §5 allows a covered work to
+sit in an aggregate alongside separate independent works, so being in the same
+repository does not put those files under the AGPL, and nothing here relicenses
+them.
+
+Still excluded, because they are derivatives of the original rather than the
+original itself, and because `scripts/reverse.sh` regenerates them: the
+decompiled output, and the mirrored vendor help pages.
 
 Because Datalyse's authorship notices are embedded in the data files it writes,
 this port reproduces them literally when saving — a file written by the original
