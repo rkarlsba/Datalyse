@@ -184,6 +184,13 @@ only, so `pip install -e .` with no extras still gives you `devices`, `info`,
 `show` and the `selftest` runner. The GUI needs `tkinter` from the system Python.
 The reverse-engineering scripts additionally need `.[reverse]`.
 
+The GUI runs on Linux, macOS and Windows from the same `gui.py`; the
+platform-specific parts (modifier keys, serial port names, file dialog filters,
+the macOS application menu) live in `datalogger/platform_support.py`. On macOS,
+read **[docs/MACOS.md](docs/MACOS.md)** first — it covers which Python to use
+(Apple's system Python ships a broken Tk 8.5), why you must use `/dev/cu.*`
+rather than `/dev/tty.*`, and adapter driver notes.
+
 ## Licence
 
 **This port is free software under the GNU Affero General Public License,
