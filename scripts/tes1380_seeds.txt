@@ -1,0 +1,46 @@
+# Extra addresses for the TES 1380 protocol recovery.
+#
+# scripts/delphi_methods.py derives the TES form methods themselves (run it with
+# --classes TTESlogForm,TSoundLMmenuform --addresses --follow).  These are the
+# helpers those methods call, which the reference-driven export of
+# scripts/ghidra/ExportDecomp.java also misses and which have to be read to
+# understand the exchange:
+#
+#   00520088  send a command and read the answer
+#   00455B00  send one string (appends the device's terminator)
+#   00456620  read the answer inside the device's timeout window
+#   00455EA0  the reader that accumulates bytes and watches for the frame end
+#   004553C8  drain the port before a command / after a device change
+#   0044F63C  the delay the original uses between commands
+#   0050D8A8  pack two decimal digits out of one byte
+#   0050DD54  the TES 1380 value decoder
+#   0050D8C0  the TES 1362 decoder (device 107, not implemented in the port)
+#   0050DA84  the TES 1336 decoder (device 108, not implemented in the port)
+#   00403EE4  string length (how "RR answered" is decided)
+#   00403CBC  string assignment
+#   0044F51C  integer to string
+#   00403F30  string concatenation
+#   00402B4C  block copy
+#   00402B7C  block fill
+#   00403E88  string from pointer
+#   00550F0C  start the measurement loop
+#   00551CB0  the measurement dispatcher (case 0x6e is the TES 1380)
+00520088
+00455B00
+00456620
+00455EA0
+004553C8
+0044F63C
+0050D8A8
+0050DD54
+0050D8C0
+0050DA84
+00403EE4
+00403CBC
+0044F51C
+00403F30
+00402B4C
+00402B7C
+00403E88
+00550F0C
+00551CB0

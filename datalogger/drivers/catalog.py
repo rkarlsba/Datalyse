@@ -17,6 +17,13 @@ Every entry records where its protocol comes from:
     Serial settings from the help pages, but the measure exchange is not
     documented anywhere.  A generic numeric-line parser is used and the driver
     says so; these need a capture from real hardware to become exact.
+``source='decompiled'``
+    The measurement exchange itself was read out of Datalyse's own machine code
+    (which help page and which address are in ``notes``), so the parser is a
+    transcription of what the original does -- the strongest provenance
+    available for a device the vendor never documented.  Getting at it means
+    decompiling the form methods, which the reference-driven export misses: see
+    ``scripts/delphi_methods.py`` and ``scripts/ghidra/DecompileAt.java``.
 
 Recovered identification strings (from the string tables at VA 0x4854F8-0x48634C):
 
@@ -43,8 +50,9 @@ from __future__ import annotations
 
 import re
 
-from .base import (NUM, Driver, SerialParams, all_floats, first_float, register,
-                   strip_units, to_float)
+from .base import (NUM, DeviceError, Driver, SerialParams, all_floats, first_float,
+                   register, strip_units, to_float)
+from ..transport import Transport
 
 
 # ---------------------------------------------------------------------------
@@ -406,3 +414,154 @@ class GenericLine(_LineDriver):
     notes = ("No documented exchange: reads whatever the instrument sends. "
              "Use `datalogger monitor` to capture the real protocol and then "
              "add a proper driver.")
+
+
+# ---------------------------------------------------------------------------
+# Protocol recovered from the decompiled handlers
+# ---------------------------------------------------------------------------
+def _bcd(byte: int) -> int:
+    """Two decimal digits per byte, high nibble first (FUN_0050D8A8)."""
+    return (byte >> 4) * 10 + (byte & 0x0F)
+
+
+@register
+class Tes1380(Driver):
+    """
+    TES 1380 pH/ORP/temperature meter -- Datalyse device 110.
+
+    Unlike every other TES family member this one is not inferred from the help
+    file: the protocol was read out of the decompiled handlers.
+
+    * ``0x00551CB0`` case ``0x6e`` is the measurement branch of the shared
+      dispatcher.  It sends a single space, then hands the answer to
+    * ``0x0050DD54``, the value decoder, and
+    * ``0x0047FB84`` case ``0x6e`` installs this device's line settings before
+      any of that runs: 9600/8/N/1, an **empty** command terminator, a 1 s read
+      window, and ``0x03`` as the byte that ends a reply frame.
+
+    So each command is answered by one ETX-terminated binary frame.  There is
+    no ASCII in it: bytes 1..4 are packed decimal digits (two per byte) and
+    bytes 6..7 are flag bits.  Datalyse never checks a start byte and never
+    counts the frame, it simply reads whatever arrives inside the 1 s window,
+    which is what :meth:`measure` does too -- except that it stops on the ETX.
+
+    ``0x0050DD54`` also fixes the two encoded scales: the value digits are
+    ``d1.d2d3d4`` (that is how the 0.001 pH resolution of the instrument
+    survives the frame) and the temperature digits are ``d1d2.d3d4``.  In mV
+    mode the same digits are two decades lower, so the meter sets a status bit
+    and the original shifts them back by 100.
+    """
+
+    key = "tes1380"
+    label = "TES-1380 pH meter"
+    serial = SerialParams(baudrate=9600, bytesize=8, parity="N", stopbits=1)
+    channels = ("pH", "t")
+    units = ("pH", "°C")
+    measure_command = " "
+    command_terminator = ""
+    response_bytes = 0
+    #: the 1 s window the dispatcher installs for device 110
+    timeout = 1.0
+    source = "decompiled"
+    notes = (
+        "Recovered from Datalyse's own decompiled code, not from a datasheet: "
+        "measurement command ' ' from case 0x6e of the measurement dispatcher "
+        "at 0x00551CB0, frame layout from the decoder at 0x0050DD54, line "
+        "settings and the empty terminator / ETX frame end (0x03) from case "
+        "0x6e of the device dispatcher at 0x0047FB84. Decoded: frame bytes "
+        "1,2 = value digits, 3,4 = temperature digits, 6 bit0 pH/mV, bit2 "
+        "degC/degF, bit4 sign, 7 bit0 +10 decade, bit4 logging in progress. "
+        "Byte 0 and byte 5 are not read by the original, and the total frame "
+        "length is not fixed anywhere in it -- the read is timeout-driven.")
+
+    #: digits the meter cannot report: 0xFFFF in the value bytes means "- - - -"
+    BLANK = 0xFF
+
+    #: the control-panel commands the TES log form sends (0x004E8CAC case 0x6e)
+    STATE_COMMANDS = ("RP", "RQ", "RR")
+    #: the settings dialog probes the 1380 with this instead of a space
+    #: (0x00489740); it decodes with the same routine, so it is an alias
+    PROBE_COMMAND = "s"
+    #: the control-panel "read log" button for the 1380 (0x004EB1D8)
+    LOG_COMMAND = "L"
+
+    # ------------------------------------------------------------------ decode
+    def decode_frame(self, frame: bytes) -> dict | None:
+        """
+        Decode one reply frame into its fields, or None if it is too short.
+
+        Returns ``value``/``unit`` (pH or mV), ``temperature``/``temp_unit``,
+        the ``logging`` and ``blank`` flags, ``decade`` (the +10 status bit the
+        original applies before the mV shift) and the raw 8 bytes it used.
+        """
+        if len(frame) < 8:
+            return None
+        b = frame
+        unit = "pH" if b[6] & 0x01 else "mV"
+        value = _bcd(b[2]) / 10.0 + _bcd(b[1]) / 1000.0
+        temperature = _bcd(b[4]) + _bcd(b[3]) / 100.0
+        if b[7] & 0x01:                     # value sits a decade higher
+            value += 10.0
+        if value > 80.0 and unit == "pH":   # dead branch for pH, kept faithful
+            value -= 80.0
+        if b[6] & 0x10:                     # sign
+            value = -value
+        if unit == "mV":                    # mV is reported two decades low
+            value *= 100.0
+        return {
+            "value": value,
+            "unit": unit,
+            "temperature": temperature,
+            "temp_unit": "°C" if b[6] & 0x04 else "°F",
+            "logging": bool(b[7] & 0x10),
+            "blank": b[1] == self.BLANK and b[2] == self.BLANK,
+            "decade": bool(b[7] & 0x01),
+            "raw": bytes(b[:8]),
+        }
+
+    def parse_measure(self, response: str) -> list[float] | None:
+        info = self.decode_frame(response.encode("cp1252", "replace"))
+        if info is None or info["blank"]:
+            return None
+        return [round(info["value"], 3), round(info["temperature"], 2)]
+
+    # --------------------------------------------------------------------- io
+    def query(self, transport: Transport, command: str,
+              timeout: float | None = None) -> bytes:
+        """Send `command` (no terminator) and read up to the frame's ETX."""
+        transport.flush_input()
+        transport.write(command.encode("cp1252"))
+        return transport.read_until(b"\x03", self.timeout if timeout is None else timeout)
+
+    def measure(self, transport: Transport) -> list[float]:
+        """
+        One live reading: send a space, read until ETX.
+
+        The transport reads with a timeout, so a meter that stays silent yields
+        a short (or empty) frame and a DeviceError instead of a blocked port.
+        """
+        raw = self.query(transport, self.measure_command)
+        vals = self.parse_measure(raw.decode("cp1252", "replace"))
+        if vals is None:
+            raise DeviceError(f"{self.key}: no reading in {raw!r}")
+        return vals
+
+    def read_state(self, transport: Transport) -> dict[str, bytes]:
+        """
+        The control panel's status exchange (0x004E8CAC, case 0x6e).
+
+        Sends a space, then ``RP`` and ``RQ``, then repeats ``RR`` -- up to four
+        times -- until the meter answers with a single byte.  The original's
+        parsing of those answers is a state machine this port has not
+        reimplemented, so the raw frames are returned for inspection: that is
+        what a capture needs, and what the original compares (``RR`` must be one
+        byte long to count as an answer).
+        """
+        out: dict[str, bytes] = {" ": self.query(transport, " ")}
+        for command in ("RP", "RQ"):
+            out[command] = self.query(transport, command)
+        for _ in range(4):
+            out["RR"] = self.query(transport, "RR")
+            if len(out["RR"]) == 1:
+                break
+        return out

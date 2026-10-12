@@ -72,7 +72,7 @@ def test_registry_populated():
     assert "generic" in reg
     for key, d in reg.items():
         assert d.key == key
-        assert d.source in ("doc", "binary", "inferred")
+        assert d.source in ("doc", "binary", "inferred", "decompiled")
 
 
 def test_elma_frame_validation():
@@ -102,6 +102,111 @@ def test_fluke_identity_expectation():
     d = registry()["fluke8845a"]
     assert d.version_ok("FLUKE, 45, 1.0")
     assert not d.version_ok("KEITHLEY,2000")
+
+
+# ------------------------------------------------------- the TES 1380 protocol
+def tes_frame(value_digits, temp_digits, flags6=0x00, flags7=0x00):
+    """
+    Build a TES-1380 reply frame the way the meter packs it.
+
+    ``value_digits``/``temp_digits`` are the four decimal digits each field
+    carries, most significant first: the value is ``d1.d2d3d4`` and the
+    temperature ``d1d2.d3d4``.  Layout recovered from 0x0050DD54: byte 0 is not
+    read, bytes 1,2 hold the value (low pair first), 3,4 the temperature, byte 5
+    is not read, 6 and 7 are flags, and the frame ends with ETX.
+    """
+    v_hi, v_lo = int("".join(map(str, value_digits[:2]))), int("".join(map(str, value_digits[2:])))
+    t_hi, t_lo = int("".join(map(str, temp_digits[:2]))), int("".join(map(str, temp_digits[2:])))
+    packed = lambda pair: (pair // 10) << 4 | (pair % 10)   # noqa: E731
+    return bytes([0x02, packed(v_lo), packed(v_hi), packed(t_lo), packed(t_hi),
+                  0x00, flags6, flags7, 0x03])
+
+
+def test_tes1380_decodes_ph_and_temperature():
+    """Datalyse's own example scale: 7.006 pH at 25.40 degC (case 0x6e)."""
+    d = registry()["tes1380"]
+    frame = tes_frame((7, 0, 0, 6), (2, 5, 4, 0), flags6=0x05)
+    info = d.decode_frame(frame)
+    assert info["unit"] == "pH" and info["temp_unit"] == "°C"
+    assert info["value"] == pytest.approx(7.006)
+    assert info["temperature"] == pytest.approx(25.40)
+    assert info["logging"] is False
+    assert d.parse_measure(frame.decode("cp1252")) == pytest.approx([7.006, 25.4])
+
+
+def test_tes1380_decodes_mv_with_the_decade_bit():
+    """
+    mV readings arrive two decades low with the +10 status bit set, which is
+    how 1999 mV fits the same four digits (0x0050DD54): 9.99 + 10 = 19.99,
+    shifted back by 100.
+    """
+    m = registry()["tes1380"]
+    frame = tes_frame((9, 9, 9, 0), (2, 5, 4, 0), flags6=0x04, flags7=0x11)
+    info = m.decode_frame(frame)
+    assert info["unit"] == "mV" and info["temp_unit"] == "°C"
+    assert info["decade"] is True
+    assert info["value"] == pytest.approx(1999.0)
+    assert info["logging"] is True                      # bit 0x10 of byte 7
+
+    neg = tes_frame((6, 4, 5, 0), (2, 0, 0, 0), flags6=0x14)
+    assert m.decode_frame(neg)["value"] == pytest.approx(-645.0)
+
+
+def test_tes1380_blank_and_short_frames_are_not_readings():
+    d = registry()["tes1380"]
+    blank = bytes([0x02, 0xFF, 0xFF, 0x40, 0x25, 0x00, 0x05, 0x00, 0x03])
+    assert d.decode_frame(blank)["blank"] is True
+    assert d.parse_measure(blank.decode("cp1252")) is None
+    assert d.parse_measure("junk") is None
+
+
+def test_tes1380_serial_settings_match_the_dispatcher():
+    """0x0047FB84 case 0x6e: 9600/8/N/1, no terminator, ETX ends the frame."""
+    d = registry()["tes1380"]
+    assert d.serial.baudrate == 9600 and d.serial.bytesize == 8
+    assert d.serial.parity == "N" and d.serial.stopbits == 1
+    assert d.command_terminator == ""
+    assert d.measure_command == " "
+    assert registry()["tes1380"].notes.lower().count("0x6e") == 2
+
+
+def test_tes1380_pty_measure_sends_a_bare_space():
+    d = registry()["tes1380"]
+    frame = tes_frame((7, 0, 0, 6), (2, 5, 4, 0), flags6=0x05)
+    t = PtyTransport(baudrate=9600, timeout=2.0)
+    t.open().serve({" ": frame.decode("cp1252")})
+    try:
+        vals = d.measure(t)
+        assert vals[0] == pytest.approx(7.006)
+        assert vals[1] == pytest.approx(25.4)
+        assert t.sent() == b" ", "the device needs no CR/LF"
+    finally:
+        t.close()
+
+
+def test_tes1380_pty_read_state_sequence():
+    """The control panel's RP/RQ/RR exchange, ending on the 1-byte answer."""
+    d = registry()["tes1380"]
+    live = tes_frame((7, 0, 0, 6), (2, 5, 4, 0), flags6=0x05)
+    script = {" ": live.decode("cp1252"),
+              "RP": "\x01\x03",
+              "RQ": "\x02\x03",
+              "RR": "\x03"}
+    t = PtyTransport(baudrate=9600, timeout=1.0)
+    t.open().serve(script)
+    try:
+        state = d.read_state(t)
+    finally:
+        t.close()
+    assert list(state) == [" ", "RP", "RQ", "RR"]
+    assert state["RR"] == b"\x03"
+    assert state["RP"].startswith(b"\x01")
+
+
+def test_tes1380_is_device_110_not_the_generic_fallback():
+    from datalogger.drivers.devices import profile
+    assert profile(110).driver == "tes1380"
+    assert find_for("TES 1380 pH/ORP/temperature").key == "tes1380"
 
 
 def test_drivers_do_not_invent_measurement_commands():
