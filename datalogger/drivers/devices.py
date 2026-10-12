@@ -303,8 +303,11 @@ DEVICE_PROFILES: dict[int, DeviceProfile] = {
                        units=("lux",), docs="—"),
     109: DeviceProfile("TES 1353 Sound Level Meter", "generic", None, (), S(9600, 8, "N", 1),
                        units=("dB",), docs="—"),
-    110: DeviceProfile("TES 1380 pH/ORP/temperature", "generic", None, (),
-                       S(9600, 8, "N", 1), channels=("pH", "t"), docs="—"),
+    110: DeviceProfile("TES 1380 pH/ORP/temperature", "tes1380", None, (),
+                       S(9600, 8, "N", 1), channels=("pH", "t"), docs="tes.htm",
+                       note="'TES 1380 pH/ORP/temperature meter: no version code' "
+                            "-- it has none, and it sends no ASCII either; the "
+                            "frame and commands came from the decompiled code"),
     111: DeviceProfile("DiVA Spectrometer", "generic", None, (), S(9600, 8, "N", 1),
                        docs="diva.htm", note="wavelength calibration from Diva.ini"),
     113: DeviceProfile("Jenway spectrophotometer", "generic", None, (), S(9600, 8, "N", 1),

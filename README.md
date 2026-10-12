@@ -32,7 +32,7 @@ inside `datalyse.zip` round-trip byte-for-byte**:
 | re-written byte-identically | **12 / 12** (incl. TAB *and* comma files) |
 | Delphi forms (DFM) decompiled | 90 / 90, zero bytes left unconsumed |
 | `Datalyse.ini` devices recognised | 138 / 138 |
-| test suite | 94 passing |
+| test suite | 123 passing |
 
 Byte-exact round-tripping pins every detail at once: cp1252 encoding, CRLF line
 ends, the sniffed separator, the sign-column space rule, seven-significant-digit
@@ -91,7 +91,7 @@ decompiled/strings*    every recovered string literal and string table
 site/help/             the vendor's per-instrument protocol documentation
 docs/                  format spec, device table, reverse-engineering notes
 scripts/               the tools that produced all of the above
-tests/                 94 tests
+tests/                 123 tests
 ```
 
 ## The data format
@@ -125,6 +125,16 @@ parser is a direct transcription:
 | `extech` | 88 | send one space, no CR/LF; 7-byte frame, RTS low |
 | `bosch` | 9, 36 | `w`; 22-char `NNNBBBBDDDDDDDDBUUUU`; cut 3, strip non-numerics |
 | `consort` | 20, 123 | `8`; `nnnn 6.28 ph 21.2` |
+
+**Exact, and recovered from the code** (`source='decompiled'`) — the vendor
+documents nothing about the exchange, so it was read out of Datalyse's own
+machine code (addresses in `driver.notes`), which the reference-driven export
+never reaches — see `scripts/delphi_methods.py` and
+`scripts/ghidra/DecompileAt.java`:
+
+| driver | devices | protocol |
+|---|---|---|
+| `tes1380` | 110 | send a bare space (no CR/LF); ETX-terminated binary frame: bytes 1,2 value digits, 3,4 temperature digits, 6/7 flag bits |
 
 **Identification exact, measurement inferred** (`source='binary'`) — the
 identify command and its expected answer were recovered from the dispatch

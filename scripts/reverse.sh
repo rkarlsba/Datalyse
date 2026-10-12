@@ -107,6 +107,22 @@ log "7/9 decompile"
     -postScript ExportDecomp.java "$ROOT/decompiled/ghidra" \
     "$ROOT/decompiled/interesting.txt"
 
+# the reference-driven pass above never reaches a form's own methods: they are
+# referenced from Delphi's published-method tables, which are data.  Derive them
+# from the class names and decompile them explicitly -- this is what made the
+# TES 1380 protocol (device 110) readable.
+log "7b/9 decompile the form methods (published-method tables)"
+{
+  "$PY" scripts/delphi_methods.py --classes TTESlogForm,TSoundLMmenuform \
+        --addresses --follow
+  grep -oE '^[0-9A-F]{8}' scripts/tes1380_seeds.txt
+} | sort -u > decompiled/ghidra_at_addrs.txt
+echo "addresses: $(wc -l < decompiled/ghidra_at_addrs.txt)"
+"$GHIDRA_DIR/support/analyzeHeadless" "$ROOT/ghidra_proj" Datalyse \
+    -process Datalyse.exe -noanalysis -scriptPath "$ROOT/scripts/ghidra" \
+    -postScript DecompileAt.java "$ROOT/decompiled/ghidra_at" \
+    "$ROOT/decompiled/ghidra_at_addrs.txt"
+
 # -------------------------------------------------------------------- 8. docs
 log "8/9 regenerate the device table docs"
 "$PY" scripts/make_device_doc.py docs/DEVICES.md

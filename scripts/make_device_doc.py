@@ -24,6 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE_LABEL = {
     "doc": "**exact**",
     "binary": "identity exact",
+    "decompiled": "**exact** (from the code)",
     "inferred": "settings only",
 }
 
@@ -48,6 +49,8 @@ def main(outpath: str) -> None:
         "|---|---|",
         "| **exact** | the vendor help documents the whole measurement exchange; "
         "the parser is a transcription |",
+        "| **exact** (from the code) | the vendor documents nothing, so the "
+        "exchange was read out of the decompiled handlers (`source='decompiled'`) |",
         "| identity exact | the identify command and its expected answer were "
         "recovered from `Datalyse.exe`; the measurement query comes from the "
         "instrument's own manual, not from Datalyse |",
@@ -74,7 +77,7 @@ def main(outpath: str) -> None:
             continue
         drv = prof.driver or "—"
         src = SOURCE_LABEL.get(reg[drv].source, "—") if drv in reg else "—"
-        if src == "**exact**":
+        if src.startswith("**exact**"):
             exact += 1
         elif src == "identity exact":
             ident += 1
